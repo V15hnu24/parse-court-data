@@ -258,9 +258,14 @@ def process_court(court_number):
     logging.debug(f"Finished processing court {court_number}")
     return output_file
 
+def read_court_numbers(file_path):
+    with open(file_path, 'r') as file:
+        court_numbers = [int(line.strip()) for line in file if line.strip().isdigit()]
+    return court_numbers
 
 def main():
-    court_numbers = [1, 2, 3, 4, 6, 9, 14, 15, 24, 25, 27, 30, 33]
+    # Read court numbers from file
+    court_numbers = read_court_numbers('court_numbers.txt')
     output_file = "case_details.csv"
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:

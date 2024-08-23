@@ -8,10 +8,11 @@ This application processes court-related HTML files to extract relevant case det
 2. [Installation](#installation)
 3. [Setting Up the Application](#setting-up-the-application)
 4. [Handling SSL Certificates](#handling-ssl-certificates)
-5. [Running the Application](#running-the-application)
-6. [File Structure](#file-structure)
-7. [Contributing](#contributing)
-8. [License](#license)
+5. [Adding/Removing Courts and Processing Daily HTML Files](#addingremoving-courts-and-processing-daily-html-files)
+6. [Running the Application](#running-the-application)
+7. [File Structure](#file-structure)
+8. [Contributing](#contributing)
+9. [License](#license)
 
 ## Prerequisites
 
@@ -67,6 +68,7 @@ response = requests.get('https://example.com/api/court-cases', headers=headers)
 
 If you're dealing with SSL certificates (e.g., for HTTPS requests), and you encounter issues related to certificate verification, you may need to install or update your SSL certificates.
 
+
 #### MacOS
 
 Create a script named `install_certificates.command` to update your SSL certificates:
@@ -97,6 +99,9 @@ import requests
 
 response = requests.get('https://example.com', verify='path/to/your/cacert.pem')
 ```
+## Adding/Removing Courts and Processing Daily HTML Files
+
+To process the HTML files for a particular day and generate CSV data, ensure that the HTML files are named in the format `court<number>.html` (e.g., `court1.html`, `court2.html`). You can specify which courts to process by editing the `court_numbers.txt` file. Add or remove court numbers as needed by modifying this file, with each court number on a new line. The application will only process the HTML files corresponding to the court numbers listed in `court_numbers.txt`.
 
 ## Running the Application
 
