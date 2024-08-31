@@ -17,6 +17,7 @@ logging.basicConfig(
     level=logging.DEBUG,  # Set the logging level
 )
 
+
 def html_table_to_csv(html_file, csv_file):
     logging.debug(f"Processing HTML file: {html_file}")
     try:
@@ -29,7 +30,9 @@ def html_table_to_csv(html_file, csv_file):
             return
 
         table = tables[0]
-        headers = [header.get_text(strip=True) for header in table.find_all("th")]
+        headers = [
+            header.get_text(strip=True) for header in table.find_all("th")
+        ]
         if not headers:
             headers = [
                 f"Column {i+1}"
@@ -55,6 +58,7 @@ def html_table_to_csv(html_file, csv_file):
     except Exception as e:
         logging.error(f"Error processing HTML to CSV for {html_file}: {e}")
 
+
 def html_csv_handler(html_file):
     csv_file = f"convert/{html_file}.csv"
     html_file = f"html/{html_file}.html"
@@ -76,7 +80,9 @@ def update_item_numbers(output_file, converted_csv_files):
                     converted_df["Column 2"].str.contains(case_no, na=False)
                 ]
                 if not match_rows.empty:
-                    output_df.at[index, "Item No"] = match_rows["Column 1"].tolist()[0]
+                    output_df.at[index, "Item No"] = int(
+                        match_rows["Column 1"].tolist()[0]
+                    )
 
         output_df.to_csv(output_file, index=False)
         logging.info(f"Updated item numbers in {output_file}")
@@ -85,7 +91,7 @@ def update_item_numbers(output_file, converted_csv_files):
 
 
 def identify_main_numbers(html_content):
-    pattern = r"WP(?:\(PIL\))?\/\d+\/\d{4}"
+    pattern = r"(?:WP|CC)(?:\(PIL\))?\/\d+\/\d{4}"
     matches = re.findall(pattern, html_content)
     unique_matches = list(set(matches))
     return unique_matches
@@ -98,7 +104,9 @@ def fetch_case_details(case_number):
     context = ssl.create_default_context(cafile=certifi.where())
 
     try:
-        with urllib.request.urlopen(url, context=context, timeout=10) as response:
+        with urllib.request.urlopen(
+            url, context=context, timeout=10
+        ) as response:
             data = response.read().decode("utf-8")
             return json.loads(data)
     except Exception as e:
@@ -117,25 +125,62 @@ def process_case_details(case_number, court_number, case_details):
     respondentAdv = " "
     hJudge = " "
 
-    with open(f'csv_files/{court_number}.csv', mode="w", newline="") as output_csv:
+    with open(
+        f"csv_files/{court_number}.csv", mode="w", newline=""
+    ) as output_csv:
         csv_writer = csv.writer(output_csv)
         csv_writer.writerow(
             ["Sl.No", "Court No", "Item No", "Case No", "Respondant Name"]
         )
+        mandals = [
+            "saidabad",
+            "khairatabad",
+            "amberpet",
+            "ameerpet",
+            "shaikpet",
+            "himayatnagar",
+            "maredpally",
+            "ramgopalpet",
+            "bahadurpura",
+            "bandlaguda",
+            "golconda",
+            "asif nagar",
+            "secunderabad",
+            "musheerabad",
+            "tirumalagiri",
+            "charminar",
+            "nampally",
+        ]
+        officer_types = [
+            "mandal revenue officer",
+            "greater hyderabad municipal corporation",
+            "rdo",
+            "revenue divisional officer",
+            "the mandal revenue officer",
+            "the rdo",
+            "the revenue divisional officer",
+            "the greater hyderabad municipal corporation",
+        ]
         all_officers = []
         case = case_details[0]
-        
+
         subject = case.get("prayer")
-        if len(case.get("orderdetails")) > 0:
+        if (
+            case.get("orderdetails") is not None
+            and len(case.get("orderdetails")) > 0
+        ):
             hJudge = case.get("orderdetails")[0].get("judgename")
+        # if len(case.get("orderdetails")) > 0:
+        #     hJudge = case.get("orderdetails")[0].get("judgename")
         respondentAdv = case.get("respondentadv")
-        
+
         pet_details = case.get("petdetails")
         pnames = []
 
-        for pet in pet_details:
-            pnames.append(pet.get("pname"))
-        petitioners = ", ".join(set(pnames))
+        if pet_details is not None:
+            for pet in pet_details:
+                pnames.append(pet.get("pname"))
+            petitioners = ", ".join(set(pnames))
 
         district = case.get("district", "").lower()
         if district != "hyderabad":
@@ -149,46 +194,27 @@ def process_case_details(case_number, court_number, case_details):
             address = res.get("address", "").lower()
 
             all_officers.append(rname + address)
-            if "collector" in rname:
+            if "collector" in rname or "collector" in address:
                 officers.append("District Collector Hyderabad")
 
-            if any(mro in rname for mro in ["tahsildar", "tahshildhar"]) and any(
-                area in address
-                for area in [
-                    "saidabad",
-                    "khairatabad",
-                    "amberpet",
-                    "ameerpet",
-                    "shaikpet",
-                    "himayatnagar",
-                    "maredpally",
-                    "ramgopalpet",
-                    "bahadurpura",
-                    "bandlaguda",
-                    "golconda",
-                    "asif nagar",
-                    "secunderabad",
-                    "musheerabad",
-                    "tirumalagiri",
-                    "charminar",
-                    "nampally"
-                ]
-            ):
-                officers.append(f"Tahsildar {address.split(',')[0].capitalize()}")
+            if any(
+                mro in address for mro in ["tahsildar", "tahshildhar"]
+            ) and any(area in address for area in mandals):
+                officers.append(
+                    f"Tahsildar {address.split(',')[0].capitalize()}"
+                )
 
             if any(
-                officer in rname
-                for officer in [
-                    "mandal revenue officer",
-                    "greater hyderabad municipal corporation",
-                    "rdo",
-                    "revenue divisional officer",
-                    "the mandal revenue officer",
-                    "the rdo",
-                    "the revenue divisional officer",
-                    "the greater hyderabad municipal corporation",
-                ]
-            ):
+                mro in rname for mro in ["tahsildar", "tahshildhar"]
+            ) and any(area in address for area in mandals):
+                officers.append(
+                    f"Tahsildar {address.split(',')[0].capitalize()}"
+                )
+
+            if any(officer in address for officer in officer_types):
+                officers.append(address.capitalize() + " " + address)
+
+            if any(officer in rname for officer in officer_types):
                 officers.append(rname.capitalize() + " " + address)
 
         ghmc_count = sum(
@@ -201,7 +227,7 @@ def process_case_details(case_number, court_number, case_details):
         )
         collector_count = sum(
             1 for officer in officers if "District Collector" in officer
-        )        
+        )
 
         if len(officers) > 0:
             if len(officers) == ghmc_count:
@@ -210,9 +236,24 @@ def process_case_details(case_number, court_number, case_details):
                 return None
             officers_result.append(", ".join(set(officers)))
 
-        csv_writer.writerow([1, court_number, 1, case_number, ", ".join(all_officers) ])
-    print(hJudge, petitioners, officers_result[0] if officers_result else None, subject, respondentAdv)
-    return hJudge, petitioners, officers_result[0] if officers_result else None, subject, respondentAdv
+        csv_writer.writerow(
+            [1, court_number, 1, case_number, ", ".join(all_officers)]
+        )
+    print(
+        hJudge,
+        petitioners,
+        officers_result[0] if officers_result else None,
+        subject,
+        respondentAdv,
+    )
+    return (
+        hJudge,
+        petitioners,
+        officers_result[0] if officers_result else None,
+        subject,
+        respondentAdv,
+    )
+
 
 def generate_csv_for_court(court_number, html_content, writer):
     logging.debug(f"Generating CSV for court number {court_number}")
@@ -223,16 +264,34 @@ def generate_csv_for_court(court_number, html_content, writer):
         # case_details = case_details_map.get(case_number)
         case_details = fetch_case_details(case_number)
         if case_details:
-            result = process_case_details(case_number, court_number, case_details)
+            result = process_case_details(
+                case_number, court_number, case_details
+            )
 
             if result is not None:
-                h_judge, petitioner_name, respondent_name, subject, respondent_adv = result
+                (
+                    h_judge,
+                    petitioner_name,
+                    respondent_name,
+                    subject,
+                    respondent_adv,
+                ) = result
                 print(respondent_name)
                 if respondent_name is not None:
                     sl_no_counter += 1
                     writer.writerow(
-    #["Sl.No", "Court No", "Item No", "Hon'ble Justice", "Case No", "Petitioner Name", "Respondant Name", "Subject", "Respondent Advocate", ]
-                        [sl_no_counter, court_number, i, h_judge, case_number, petitioner_name, respondent_name, subject, respondent_adv]
+                        # ["Sl.No", "Court No", "Item No", "Hon'ble Justice", "Case No", "Petitioner Name", "Respondant Name", "Subject", "Respondent Advocate", ]
+                        [
+                            sl_no_counter,
+                            court_number,
+                            i,
+                            h_judge,
+                            case_number,
+                            petitioner_name,
+                            respondent_name,
+                            subject,
+                            respondent_adv,
+                        ]
                     )
     logging.debug(f"Finished generating CSV for court number {court_number}")
 
@@ -251,21 +310,42 @@ def process_court(court_number):
         with open(output_file, mode="w", newline="") as output_csv:
             writer = csv.writer(output_csv)
             writer.writerow(
-                ["Sl.No", "Court No", "Item No", "Hon'ble Justice", "Case No", "Petitioner Name", "Respondant Name", "Subject", "Respondent Advocate"]
+                [
+                    "Sl.No",
+                    "Court No",
+                    "Item No",
+                    "Hon'ble Justice",
+                    "Case No",
+                    "Petitioner Name",
+                    "Respondant Name",
+                    "Subject",
+                    "Respondent Advocate",
+                ]
             )
             generate_csv_for_court(court_number, html_content, writer)
 
     logging.debug(f"Finished processing court {court_number}")
     return output_file
 
+
 def read_court_numbers(file_path):
-    with open(file_path, 'r') as file:
-        court_numbers = [int(line.strip()) for line in file if line.strip().isdigit()]
+    with open(file_path, "r") as file:
+        court_numbers = [
+            int(line.strip()) for line in file if line.strip().isdigit()
+        ]
     return court_numbers
+
+
+def order_serial_number(file_path):
+    # Give it 1 to n to exising serial numbers
+    df = pd.read_csv(file_path)
+    df["Sl.No"] = range(1, len(df) + 1)
+    df.to_csv(file_path, index=False)
+
 
 def main():
     # Read court numbers from file
-    court_numbers = read_court_numbers('court_numbers.txt')
+    court_numbers = read_court_numbers("court_numbers.txt")
     output_file = "case_details.csv"
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
@@ -274,7 +354,8 @@ def main():
             for court_number in court_numbers
         ]
         output_files = [
-            future.result() for future in concurrent.futures.as_completed(futures)
+            future.result()
+            for future in concurrent.futures.as_completed(futures)
         ]
 
     # Filter out any None or empty files
@@ -296,10 +377,11 @@ def main():
         f"convert/court{court_number}.csv" for court_number in court_numbers
     ]
     update_item_numbers(output_file, converted_csv_files)
+    order_serial_number(output_file)
 
 
 def dev():
-    print(process_case_details(1, 1, fetch_case_details("WP/16785/2024")))
+    print(process_case_details(1, 1, fetch_case_details("CC/263/2018")))
 
 
 if __name__ == "__main__":
