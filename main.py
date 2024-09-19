@@ -45,7 +45,9 @@ def _get_updated_date():
     return str(valid_dates[0])
 
 
-def generate_html_files_helper(date):
+def generate_htmls(date):
+    print("Generating htmls for the date: ", date)
+
     # 1. Start the session
     session = requests.Session()
     start_url = "https://services.tshc.gov.in/Hcdbs/search.do"
@@ -63,7 +65,7 @@ def generate_html_files_helper(date):
 
     # 4. Get the court list (base64 encoded)
     court_list_api_url = "https://services.tshc.gov.in/Hcdbs/courtlist.jsp"
-    court_list_params = {"listtype1": "D", "listdate1": "2024-09-04"}
+    court_list_params = {"listtype1": "D", "listdate1": date}
     court_list_response = session.get(
         court_list_api_url, params=court_list_params
     )
@@ -96,11 +98,6 @@ def generate_html_files_helper(date):
             file.write(cause_list_html_response.text)
 
         print(f"Cause list saved as 'court{court_code}.html'")
-
-def generate_htmls():
-    tom_date = _get_updated_date()
-    print("Generating htmls for the date: ", tom_date)
-    generate_html_files_helper(tom_date)
 
 
 def html_table_to_csv(html_file, csv_file):
@@ -429,8 +426,9 @@ def order_serial_number(file_path):
 
 
 def main():
+    next_date = _get_updated_date()
     # Generate Html files into html folder
-    generate_htmls()
+    generate_htmls(next_date)
 
     # Read court numbers from file
     court_numbers = read_court_numbers("court_numbers.txt")
