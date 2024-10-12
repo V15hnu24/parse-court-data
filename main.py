@@ -307,15 +307,15 @@ def process_case_details(case_number, court_number, case_details):
                 for ghmc in ["greater hyderabad municipal corporation"]
             )
         )
-        collector_count = sum(
-            1 for officer in officers if "District Collector" in officer
-        )
+        # collector_count = sum(
+        #     1 for officer in officers if "District Collector" in officer
+        # )
 
         if len(officers) > 0:
             if len(officers) == ghmc_count:
                 return None
-            if len(officers) == ghmc_count + collector_count:
-                return None
+            # if len(officers) == ghmc_count + collector_count:
+            #     return None
             officers_result.append(", ".join(set(officers)))
 
         csv_writer.writerow(
